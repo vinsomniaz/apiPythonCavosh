@@ -20,29 +20,24 @@ def get_cliente():
     data = ClienteSchema(request.get_json())
     cliente_data = service.get_cliente(data.correo, data.passwordd)
     
-    success = cliente_data is not None
-    message = "Cliente registrado" if success else "Cliente no registrado"
-    
-    return build_response(success, cliente_data, message)
+    if cliente_data is None:
+        return build_response(False, None, "Cliente no registrado"), 404
+
+    return build_response(True, cliente_data, "Cliente encontrado"), 200
 
 @app.route("/api/v1/cliente", methods=["POST"])
 def set_cliente():
     data = ClienteSchema(request.get_json())
     service_result = service.set_cliente(data)
 
-    success = "id" in service_result or "update" in service_result
-    data_response = service_result if "id" in service_result else None
+    if "error" in service_result:
+        return build_response(False, None, service_result["error"])
 
     if "id" in service_result:
-        message = "Cliente registrado"
-    elif "update" in service_result:
-        message = "Cliente actualizado"
-    elif "error" in service_result:
-        message = service_result["error"]
-    else:
-        message = "No se pudo registrar el cliente"
+        message = "Cliente registrado correctamente"
+        return build_response(True, service_result, message)
 
-    return build_response(success, data_response, message)
+    return build_response(False, None, "No se pudo registrar el cliente"), 500
 
 @app.route("/api/v1/cliente/codigo/", methods=["POST"])
 def get_cliente_codigo():
@@ -51,19 +46,24 @@ def get_cliente_codigo():
 
     success = "codigo" in service_result
     data_response = service_result if success else None
-    message = "Código generado" if success else service_result.get("error", "Error desconocido")
+    message = "Código generado" if success else service_result.get("error", ["error"])
 
     return build_response(success, data_response, message)
 
 @app.route("/api/v1/cliente/codigo/validar", methods=["POST"])
 def validar_codigo():
-    data = ClienteSchema(request.get_json())
-    service_result = service.get_cliente_codigo_validar(data.correo, data.codigo)
-
-    success = service_result is not None
-    message = "Código validado correctamente" if success else "Código o correo incorrecto / expirado"
+    data = request.get_json()
+    cliente_id = data.get('id')
+    codigo = data.get('codigo')
     
-    return build_response(success, service_result, message)
+    if not cliente_id or not codigo:
+        return build_response(False, None, "Ingresa los datos completos")
+
+    service_result = service.get_cliente_codigo_validar(cliente_id, codigo)
+    success = "validacion" in service_result
+    message = service_result.get("error") if "error" in service_result else f"Código válido. Minutos restantes: {service_result['minutos_restantes']}"
+    
+    return build_response(success, service_result if success else None, message)
 
 if __name__ == "__main__":
     print("running server")
