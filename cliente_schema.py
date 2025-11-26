@@ -1,7 +1,5 @@
-# cliente_schema.py
-
 class ClienteSchema:
-    """Clase para manejar datos JSON de entrada de los controladores."""
+    """manejar datos JSON"""
     
     def __init__(self, data: dict):
         self.id = data.get('id', 0)
