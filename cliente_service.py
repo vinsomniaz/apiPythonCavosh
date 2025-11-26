@@ -40,6 +40,8 @@ class ClienteService:
 
     def get_cliente(self, correo: str, passwordd: str):
         results = self._execute_sp("sp_getCliente", {"correo": correo, "passwordd": passwordd})
+        if results and "error" in results[0]:
+            return {"error": results[0]["error"]}
         return results[0] if results else None
     
     def set_cliente(self, data: 'ClienteSchema'):
@@ -70,6 +72,15 @@ class ClienteService:
         
         return {"error": "Error al generar el código."}
 
-    def get_cliente_codigo_validar(self, correo: str, codigo: str):
-        results = self._execute_sp("sp_getCodigoVerificacion", {"correo": correo, "codigo": codigo})
-        return results[0] if results else None
+    def get_cliente_codigo_validar(self, id_cliente: int, codigo: str):
+        params = {"_id": id_cliente, "_codigo": codigo}
+        results = self._execute_sp("sp_getClienteCodigoValidar", params)
+
+        if not results:
+             return {"error": "El servidor no está disponible"}
+        minutos = results[0].get('minutos', 0)
+        
+        if minutos > 0:
+            return {"validacion": True, "minutos_restantes": minutos}
+        else:
+            return {"error": "Código inválido o ha caducado."}
